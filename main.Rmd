@@ -48,6 +48,7 @@ cases_state <- cases %>% group_by(Province_State) %>% summarise(across(everythin
 ```
 
 ```{r}
+# Edits COVID-19 Dataframe so that it only includes the data at montthy level
 cases_state_month <- data.frame(matrix(NA,    # Create empty data frame
                           nrow = nrow(cases_state),
                           ncol = 0))
@@ -73,6 +74,7 @@ cases_state_month = cases_state_month[, c(1, 4:(ncol(cases_state_month)-7))]
 
 
 ```{r}
+# finds fips code from county names
 for (row in 1:nrow(county_pop)) {
   if (row %% 100 == 0){
     print(row)
@@ -105,7 +107,10 @@ country_2 = country_2[country_2$Notes == "" & country_2$Month.Code %in% c('2021/
 country = rbind(country_1, country_2)
 ```
 
+# sARIMA Modelling Drug-Related National Level
+
 ```{r}
+# Forecasting at the national level drug-related
 country[country == 'Suppressed'] <- NA
 country$Deaths = as.numeric(country$Deaths)
 
@@ -148,12 +153,14 @@ model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')
 autoplot(t_Country, series="Data", size = 0.7) + 
    autolayer(fit$fitted, series= model_name, size = 0.5) +
    autolayer(f_fit, series="Prediction") +
-   autolayer(t_Country2, series = "True Post-Pandemic") +
+   autolayer(t_Country2, series = "True Pandemic") +
   xlab("Year") + ylab("Drug Overdose Deaths") + ggtitle("United States") + theme_bw()+theme(legend.title = element_blank(),legend.position = "bottom")
 ggsave(paste('plots/',"US States Time"),
   device = "png")
 ```
+
 ```{r}
+# Population normalization
 US_pop_norm = (state_pop$Population[state_pop$State == 'United States']/100000)
 excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
 lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
@@ -164,12 +171,7 @@ lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]) 
 upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) / US_pop_norm
 ```
 
-
-```{r}
-California = state %>% filter(State == "California")
-California[California == 'Suppressed'] <- NA
-California$Deaths = as.numeric(levels(California$Deaths))[California$Deaths]
-```
+# sARIMA Modelling Drug-Related State Level, Correlation with COVID-19 cases
 
 ```{r}
 plots = list()
@@ -249,8 +251,8 @@ model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')
 
 ```
 
-## Output Plots
 ```{r}
+# Save Plots
 for (i in seq(1, length(plots))){
   ggsave(paste('plots/states/',state_names[i]),
   plot = plots[[i]],
@@ -259,12 +261,14 @@ for (i in seq(1, length(plots))){
 ```
 
 ```{r}
+# Population Normalization
 df_excess = merge(df_excess, state_pop)
 df_excess = df_excess %>% mutate(Excess_pop = as.numeric(Excess)/(Population/100000), Lower95_pop =as.numeric(Lower95)/(Population/100000), Upper95_pop =as.numeric(Upper95)/(Population/100000), Excess_pop_2 = as.numeric(Excess_2)/(Population/100000), Lower95_pop_2 =as.numeric(Lower95_2)/(Population/100000), Upper95_pop_2 =as.numeric(Upper95_2)/(Population/100000))
 colnames(df_excess)[1] = 'state'
 ```
 
 ```{r}
+# Plot Map of US
 plot_usmap(data = df_excess, values = "Excess_pop", color = "black") + 
   scale_fill_viridis_c(option= "magma", name = "Excess Deaths Per 100,000 Persons", label = scales::comma) + 
   labs(title = "US Excess Drug Overdose Deaths During the Pandemic") +
@@ -274,6 +278,7 @@ ggsave(paste('plots/',"US Map States"),
 ```
 
 ```{r}
+# Plot Map of US first couple of months
 plot_usmap(data = df_excess, values = "Excess_pop_2", color = "black") + 
   scale_fill_viridis_c(option= "magma", name = "Excess Deaths Per 100,000 Persons", label = scales::comma) + 
   labs(title = "US Excess Drug Overdose Deaths During the Pandemic") +
@@ -283,6 +288,7 @@ ggsave(paste('plots/',"US Map States First 3 Months"),
 ```
 
 ```{r}
+# Plot all excess mortality on vertical plot
 df_excess = df_excess[order(df_excess$Excess_pop, decreasing = T),]
 df_excess$state = factor(df_excess$state, levels=df_excess[order(df_excess$Excess_pop), "state"])
 df_excess = df_excess[complete.cases(df_excess), ]
@@ -305,6 +311,7 @@ ggsave(paste('plots/',"Vertical Plot"),
 ```
 
 ```{r}
+# Plot all excess mortality on vertical plot first 3 months
 df_excess = df_excess[order(df_excess$Excess_pop_2, decreasing = T),]
 df_excess$state = factor(df_excess$state, levels=df_excess[order(df_excess$Excess_pop_2), "state"])
 df_excess = df_excess[complete.cases(df_excess), ]
@@ -326,11 +333,9 @@ ggsave(paste('plots/',"Vertical Plot First 3 Months"),
   device = "png", width = 7, height = 9)
 ```
 
-# LOESS Approach
-### Fill in
+# LOESS Approach (same organization as sARIMA section)
 
 ```{r}
-# Prediction (death count, adolescents)
 country_arr = country$Deaths[1:(length(country$Deaths) - 18)]
 country_arr2 = country$Deaths[(length(country$Deaths) - 17):length(country$Deaths)]
 loess_model <- loess(country_arr ~ as.numeric(1:length(country_arr)), control = loess.control(surface = "direct"))
@@ -363,6 +368,7 @@ ggsave(paste('plots/',"US States Time Loess"),
 ```
 
 ```{r}
+# Pop Norm
 US_pop_norm = (state_pop$Population[state_pop$State == 'United States']/100000)
 excess = sum(country_arr2 - predict_loess$fit) / US_pop_norm
 lower95 = sum(country_arr2 - df_plots$lower[(length(df_plots$lower) - 17):length(df_plots$lower)]) / US_pop_norm
@@ -374,6 +380,7 @@ upper952 = sum(country_arr2[1:4] - df_plots$upper[(length(df_plots$upper) -17):(
 ```
 
 ```{r}
+# State Level
 plots_loess = list()
 state_names = as.character(unique(state$State))
 df_excess_loess <- data.frame(matrix(nrow = 51, ncol = 7))
@@ -431,8 +438,8 @@ df_excess_loess = df_excess_loess %>% mutate(Excess_pop = as.numeric(Excess)/(Po
 colnames(df_excess_loess)[1] = 'state'
 ```
 
-## Generates Plots
 ```{r}
+# Save Plots
 for (i in seq(1, length(plots_loess))){
   ggsave(paste('plots/states_loess/',state_names[i]),
   plot = plots_loess[[i]],
@@ -441,6 +448,7 @@ for (i in seq(1, length(plots_loess))){
 ```
 
 ```{r}
+# US Map
 plot_usmap(data = df_excess_loess, values = "Excess_pop", color = "black") + 
   scale_fill_viridis_c(option= "magma", name = "Excess Deaths Per 100,000 Persons", label = scales::comma) + 
   labs(title = "US Excess Drug Overdose Deaths During the Pandemic") +
@@ -450,6 +458,7 @@ ggsave(paste('plots/',"US Map States Loess"),
 ```
 
 ```{r}
+# Plot of values and error bars for loess
 df_excess_loess = df_excess_loess[order(df_excess_loess$Excess_pop, decreasing = T),]
 df_excess_loess$state = factor(df_excess_loess$state, levels=df_excess_loess[order(df_excess_loess$Excess_pop), "state"])
 vert_plot <- ggplot(
@@ -471,9 +480,9 @@ ggsave(paste('plots/',"Vertical Plot Loess"),
 ```
 
 # County Level Estimates
-## Preprocessing
 
 ```{r}
+# Preprocessing
 county = county_1[county_1$Notes == "", ]
 # Not Including 2021 for now
 # county_2 = county_2[county_2$Notes == "" & county_2$Year.Code == 2021, ]
@@ -523,6 +532,7 @@ for (i in county_codes){
 ```
 
 ```{r}
+# Edit and Merge on FIPS
 for (row in 1:nrow(df_excess_county)){
   if (nchar(df_excess_county[row, 'Code']) == 4){
     newChar = paste0("0", df_excess_county[row, 'Code'])
@@ -533,12 +543,14 @@ df_excess_county <- merge(df_excess_county, county_pop, by.x = 'Code', by.y = 'f
 ```
 
 ```{r}
+# Pop Normalization
 df_excess_county = df_excess_county %>% mutate(Excess_pop = as.numeric(Excess)/(Pop/100000), Lower95_pop = as.numeric(Lower95)/(Pop/100000), Upper95_pop = as.numeric(Upper95)/(Pop/100000))
 colnames(df_excess_county)[1] = 'fips'
 colnames(df_excess_county)[2] = 'County'
 ```
 
 ```{r}
+# County Level US plot
 plot_usmap(data = df_excess_county, values = "Excess_pop", color = "black") + 
   scale_fill_viridis_c(option= "magma", name = "Excess Deaths Per 100,000 Persons", label = scales::comma, na.value = "white") + 
   labs(title = "County-Level Excess Deaths Estimates") +
@@ -569,7 +581,7 @@ ggsave(paste('plots/',"Vertical Plot County"),
   device = "png", width = 7, height = 9)
 ```
 
-## LOESS test
+## LOESS test (Not used in final version)
 ```{r}
 county_data = county %>% filter(County.Code == "54099")
 loess_model <- loess(county_data$Deaths[1:(length(county_data$Deaths) -1)] ~ as.numeric(1:(length(county_data$Deaths)-1)), control = loess.control(surface = "direct"))
@@ -593,6 +605,7 @@ geom_point(aes(y=actual)) +
 theme_bw() + ggtitle(as.character(unique(county_data$County))) + ylab('Deaths') + xlab('Years') +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 10))
 ```
+
 # Regression Analysis
 ## CCVI
 ```{r}
@@ -614,7 +627,6 @@ summary(wls_model_ccvi)
 ```
 
 ### County CCVI
-
 
 ```{r}
 ccvi_indicators <- read_excel('data/surgo_ccvi/ccvi_county_raw_indicators_public.xlsx')
@@ -661,7 +673,7 @@ wls_model_ccvi_county <- lm(Excess_pop ~ ses_EP_POV + ses_EP_UNEMP + ses_EP_PCI 
 summary(wls_model_ccvi_county)
 ```
 
-## SVI
+## SVI (Results not Included)
 
 ```{r}
 df_svi <- read.csv('data/SVI2018_US_COUNTY.csv')
@@ -682,9 +694,10 @@ wls_model_svi_county <- lm(Excess_pop ~ RPL_THEME1 + RPL_THEME2 + RPL_THEME3 + R
 summary(wls_model_svi_county)
 ```
 
-# Basic Visualizations
+# Basic Visualizations based on Demographics
 
 ```{r}
+# Import dataset shared by Prof Therriault
 df_dem <- read.csv('data/dem_data.csv')
 df_dem$County = as.character(levels(df_dem$County))[df_dem$County]
 df_dem$State = as.character(levels(df_dem$State))[df_dem$State]
@@ -759,6 +772,7 @@ acs_names = c('Exurbs', 'Graying America', 'African American South', 'Evangelica
 ```
 
 ```{r}
+# Calculate Mean and SD for each County Type
 acs <- read_excel('data/County-Type.xlsx')
 acs$fips = as.character(acs$fips)
 for (row in 1:nrow(acs)){
@@ -776,6 +790,7 @@ df_mean_acs$Type_Number = as.factor(df_mean_acs$Type_Number)
 
 
 ```{r}
+# Plot results
 p<-ggplot(data=df_mean_acs, aes(x=Type_Number, y=mean)) +
   geom_bar(stat="identity", fill="steelblue") + 
   xlab('County Type') +
@@ -790,8 +805,9 @@ ggsave(paste('plots/',"ACP Excess"),
   device = "png")
 ```
 
+# Repeat of Original Analysis for Specific Drug Types
 
-# Opioids
+## Opioids
 ```{r}
 state_1 <- read.delim("data/All Opioids/State_Month.txt")
 state_2 <- read.delim("data/All Opioids/State_Month_2.txt")
@@ -899,7 +915,18 @@ ggsave(paste('plots/',"US Map States Opioids"),
   device = "png")
 ```
 
-# Synthetic Opioids
+```{r}
+US_pop_norm = (state_pop$Population[state_pop$State == 'United States']/100000)
+excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
+lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
+upper95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["upper"]])) / US_pop_norm
+
+excess2 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]) / US_pop_norm
+lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]) / US_pop_norm
+upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) / US_pop_norm
+```
+
+## Synthetic Opioids
 ```{r}
 state <- read.delim("data/Synthetic Opioids/State_Year.txt")
 plots = list()
@@ -1041,7 +1068,18 @@ ggsave(paste('plots/',"US States Time Synthetic Opioids"),
   device = "png")
 ```
 
-# Cocaine
+```{r}
+US_pop_norm = (state_pop$Population[state_pop$State == 'United States']/100000)
+excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
+lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
+upper95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["upper"]])) / US_pop_norm
+
+excess2 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]) / US_pop_norm
+lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]) / US_pop_norm
+upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) / US_pop_norm
+```
+
+## Cocaine
 ```{r}
 state <- read.delim("data/Cocaine/State_Year.txt")
 plots = list()
@@ -1175,8 +1213,19 @@ ggsave(paste('plots/',"US States Time Cocaine"),
   device = "png")
 ```
 
+```{r}
+US_pop_norm = (state_pop$Population[state_pop$State == 'United States']/100000)
+excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
+lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
+upper95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["upper"]])) / US_pop_norm
 
-# Methamphetamines
+excess2 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]) / US_pop_norm
+lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]) / US_pop_norm
+upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) / US_pop_norm
+```
+
+
+## Methamphetamines
 ```{r}
 state <- read.delim("data/Meth/State_Year.txt")
 df_excess_meth <- data.frame(matrix(nrow = 51, ncol = 4))
@@ -1310,7 +1359,18 @@ ggsave(paste('plots/',"US States Time Methamphetamines"),
   device = "png")
 ```
 
-# Benzadiapenes
+```{r}
+US_pop_norm = (state_pop$Population[state_pop$State == 'United States']/100000)
+excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
+lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
+upper95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["upper"]])) / US_pop_norm
+
+excess2 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]) / US_pop_norm
+lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]) / US_pop_norm
+upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) / US_pop_norm
+```
+
+## Benzadiapenes
 ```{r}
 state <- read.delim("data/Benz/State_Year.txt")
 plots = list()
@@ -1444,7 +1504,18 @@ ggsave(paste('plots/',"US States Time benzodiazepines"),
   device = "png")
 ```
 
-# Alcohol
+```{r}
+US_pop_norm = (state_pop$Population[state_pop$State == 'United States']/100000)
+excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
+lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
+upper95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["upper"]])) / US_pop_norm
+
+excess2 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]) / US_pop_norm
+lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]) / US_pop_norm
+upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) / US_pop_norm
+```
+
+## Alcohol
 
 ```{r}
 state <- read.delim("data/Alcohol/State_Year.txt")
@@ -1576,7 +1647,18 @@ ggsave(paste('plots/',"US States Time Alcohol"),
   device = "png")
 ```
 
-# Heroin
+```{r}
+US_pop_norm = (state_pop$Population[state_pop$State == 'United States']/100000)
+excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
+lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
+upper95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["upper"]])) / US_pop_norm
+
+excess2 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]) / US_pop_norm
+lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]) / US_pop_norm
+upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) / US_pop_norm
+```
+
+## Heroin
 
 ```{r}
 state <- read.delim("data/Heroin/State_Year.txt")
@@ -1710,3 +1792,15 @@ autoplot(t_Country, series="Data", size = 0.7) +
 ggsave(paste('plots/',"US States Time Alcohol"),
   device = "png")
 ```
+
+```{r}
+US_pop_norm = (state_pop$Population[state_pop$State == 'United States']/100000)
+excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
+lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
+upper95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["upper"]])) / US_pop_norm
+
+excess2 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]) / US_pop_norm
+lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]) / US_pop_norm
+upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) / US_pop_norm
+```
+

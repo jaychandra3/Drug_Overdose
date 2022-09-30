@@ -1,4 +1,0 @@
-"0","California = state %>% filter(State == ""California"")"
-"0","California[California == 'Suppressed'] <- NA"
-"0","California$Deaths = as.numeric(levels(California$Deaths))[California$Deaths]"
-"2","NAs introduced by coercion"

@@ -1,7 +1,0 @@
-"0","for (i in seq(1, length(plots))){"
-"0","  ggsave(paste('plots/states/',state_names[i]),"
-"0","  plot = plots[[i]],"
-"0","  device = ""png"")"
-"0","}"
-"2","Saving 7 x 7 in image
-"

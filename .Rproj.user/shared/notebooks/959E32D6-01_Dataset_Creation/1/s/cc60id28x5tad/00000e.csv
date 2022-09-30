@@ -1,8 +1,0 @@
-"0","US_pop_norm = (state_pop$Population[state_pop$State == 'United States']/100000)"
-"0","excess = sum(country_arr2 - predict_loess$fit) / US_pop_norm"
-"0","lower95 = sum(country_arr2 - df_plots$lower[(length(df_plots$lower) - 17):length(df_plots$lower)]) / US_pop_norm"
-"0","upper95 = sum(country_arr2 - df_plots$upper[(length(df_plots$upper) -17):length(df_plots$upper)]) / US_pop_norm"
-"0",""
-"0","# excess2 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[[""mean""]])[1:4]) / US_pop_norm"
-"0","# lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[[""lower""]])[1:4]) / US_pop_norm"
-"0","# upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[[""upper""]])[1:4]) / US_pop_norm"

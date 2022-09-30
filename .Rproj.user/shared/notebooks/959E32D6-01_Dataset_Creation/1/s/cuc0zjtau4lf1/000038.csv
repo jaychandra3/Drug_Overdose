@@ -1,2 +1,0 @@
-"0","ggsave(paste('plots/',""Vertical Plot""),"
-"0","  device = ""png"", width = 7, height = 9)"

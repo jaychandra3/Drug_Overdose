@@ -1,3 +1,0 @@
-"0","df_excess = merge(df_excess, state_pop)"
-"0","df_excess = df_excess %>% mutate(Excess_pop = as.numeric(Excess)/(Population/100000), Lower95_pop =as.numeric(Lower95)/(Population/100000), Upper95_pop =as.numeric(Upper95)/(Population/100000), Excess_pop_2 = as.numeric(Excess_2)/(Population/100000), Lower95_pop_2 =as.numeric(Lower95_2)/(Population/100000), Upper95_pop_2 =as.numeric(Upper95_2)/(Population/100000))"
-"0","colnames(df_excess)[1] = 'state'"

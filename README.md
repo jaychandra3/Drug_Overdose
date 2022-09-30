@@ -1,4 +1,4 @@
-# Drug_Overdose
+# Spatial Variation in Drug-Related Excess Mortality During the COVID-19 Pandemic in the United States (Jay Chandra and Anushka Bhaskar)
 
 ### Data holds all of the drug overdose data, vulnerability indices, demographic data, and population data
 

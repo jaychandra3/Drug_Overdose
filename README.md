@@ -1,6 +1,6 @@
-# Spatial Variation in Drug-Related Excess Mortality During the COVID-19 Pandemic in the United States (Jay Chandra and Anushka Bhaskar)
+# Spatial Variation in Drug-Related Excess Mortality During the COVID-19 Pandemic in the United States
 
-### Data holds all of the drug overdose data, vulnerability indices, demographic data, and population data
+### Data holds all of the drug overdose data, demographic data, and population data
 
 ### Plots holds all of the generated plots
 
@@ -12,6 +12,5 @@
 4. LOESS Approach (same organization as sARIMA section)
 5. County Level Estimates- ARIMA, LOESS test (Not used in final version)
 6. Regression Analysis- CCVI, SVI
-7. Basic Visualizations based on Demographics
-8. American Community Project Analysis
-9. Repeat of Original Analysis for Specific Drug Types- All Opioids, Synthetic Opioids, Cocaine, Methamphetamines, Benzodiazepines, Alcohol, Heroin
+7. Repeat of Original Analysis for Specific Drug Types- All Opioids, Synthetic Opioids, Cocaine, Methamphetamines, Benzodiazepines, Alcohol, Heroin
+8. Additional Analyses (Age Stratification, Percent of All Deaths and All Drug Overdoses, Year vs Monthly Data Comparison)

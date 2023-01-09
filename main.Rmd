@@ -117,7 +117,7 @@ country$Deaths = as.numeric(country$Deaths)
 
 t_Country = ts(country$Deaths[1:(length(country$Deaths) - 18)], start = decimal_date(as.Date("2015-01-01")), frequency = 12)
 
-parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 1),
+parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 2),
             P = seq(0, 1), D = seq(0, 1), Q = seq(0, 1))
 
 best_aic = 10000
@@ -157,10 +157,10 @@ autoplot(t_Country, series="Data", size = 0.7) +
    autolayer(fit$fitted, series= model_name, size = 0.5) +
    autolayer(f_fit, series="Prediction") +
    autolayer(t_Country2, series = "True Pandemic") + 
-  xlab("Year") + ylab("Drug Overdose Deaths") + ggtitle("United States") + theme_bw()+theme(legend.title = element_blank(),legend.position = "none") + scale_x_continuous(breaks=c(2015, 2016, 2017, 2018, 2019, 2020, 2021)) + 
+  xlab("Year") + ylab("Drug Overdose Deaths") + theme_bw()+ggtitle("All Substance Types")+theme(legend.title = element_blank(),legend.position = "none") + scale_x_continuous(breaks=c(2015, 2016, 2017, 2018, 2019, 2020, 2021)) + 
 scale_color_manual(values=clrs)
 ggsave(paste('plots/',"US States Time"),
-  device = "png", width = 6, height = 5, dpi = 600)
+  device = "png", width = 7, height = 5, dpi = 600)
 ```
 
 ```{r}
@@ -169,6 +169,12 @@ US_pop_norm = (state_pop$Population[state_pop$State == 'United States']/100000)
 excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
 lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
 upper95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["upper"]])) / US_pop_norm
+expected = paste0(round(sum(as.numeric(sum(f_fit[["mean"]])))), ' (',round(sum(as.numeric(f_fit[["lower"]]))), '-', round(sum(as.numeric(f_fit[["upper"]]))), ')')
+ratio = round(sum(as.numeric(t_Country2)) / sum(as.numeric(f_fit[["mean"]])), 2)
+ratioL = round(sum(as.numeric(t_Country2)) / sum(as.numeric(f_fit[["lower"]])), 2)
+ratioU = round(sum(as.numeric(t_Country2)) / sum(as.numeric(f_fit[["upper"]])), 2)
+ratioString = paste0 (ratio, ' (', ratioU, '-', ratioL, ')')
+observed = sum(as.numeric(t_Country2))
 
 excess2 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]) / US_pop_norm
 lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]) / US_pop_norm
@@ -183,9 +189,10 @@ correlation_cases = vector()
 state_names = as.character(unique(state$State))
 df_params <- data.frame(matrix(nrow = 51, ncol = 7))
 colnames(df_params) <- c('State', 'p', 'd', 'q', 'P', 'D', 'Q')
-df_excess <- data.frame(matrix(nrow = 51, ncol = 8))
-colnames(df_excess) <- c('State', 'Excess', 'Lower95', 'Upper95', 'Excess_2', 'Lower95_2', 'Upper95_2', 'correlation')
+df_excess <- data.frame(matrix(nrow = 51, ncol = 12))
+colnames(df_excess) <- c('State', 'Observed', 'Expected', 'Ratio', 'Ratio CI', 'Excess', 'Lower95', 'Upper95', 'Excess_2', 'Lower95_2', 'Upper95_2', 'correlation')
 df_excess_time <- data.frame(matrix(nrow = 51, ncol = 19))
+mae = vector()
 for (i in seq(1, length(state_names))){
   state_name = state_names[i]
   cases = cases_state_month[cases_state_month$state == state_name, 2:ncol(cases_state_month)]
@@ -194,7 +201,7 @@ for (i in seq(1, length(state_names))){
   State_data$Deaths = as.numeric(levels(State_data$Deaths))[State_data$Deaths]
   t_State = ts(State_data$Deaths[1:(length(State_data$Deaths) - 18)], start = decimal_date(as.Date("2015-01-01")), frequency = 12)
   
-  parameters = expand.grid(p = seq(0, 1), d = seq(0, 1), q = seq(0, 1),
+  parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 2),
               P = seq(0, 1), D = seq(0, 1), Q = seq(0, 1))
   
   best_aic = 10000
@@ -230,9 +237,14 @@ for (i in seq(1, length(state_names))){
   f_fit<-forecast(best_fit, robust = TRUE, h = 18, level = 95)
   
   t_State2 = ts(State_data$Deaths[(length(State_data$Deaths) - 17):length(State_data$Deaths)], start = decimal_date(as.Date("2020-03-01")), frequency = 12)
+  t_State = ts(State_data$Deaths[1:(length(State_data$Deaths) - 18)], start = decimal_date(as.Date("2015-01-01")), frequency = 12)
   excess = as.numeric(t_State2) - as.numeric(f_fit[["mean"]])
   lower95 = as.numeric(t_State2) - as.numeric(f_fit[["lower"]])
   upper95 = as.numeric(t_State2) - as.numeric(f_fit[["upper"]])
+  ratio = round(sum(as.numeric(t_State2)) / sum(as.numeric(f_fit[["mean"]])), 2)
+  ratioL = round(sum(as.numeric(t_State2)) / sum(as.numeric(f_fit[["lower"]])), 2)
+  ratioU = round(sum(as.numeric(t_State2)) / sum(as.numeric(f_fit[["upper"]])), 2)
+  mae = c(mae, mean(abs(t_State - best_fit$fitted) / best_fit$fitted, na.rm = T))
   
   excess2 = as.numeric(t_State2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]
   lower952 = as.numeric(t_State2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]
@@ -240,7 +252,9 @@ for (i in seq(1, length(state_names))){
   
   df_excess_time[i, ] = c(state_name, excess)
   df_params[i, ] = c(state_name, best_params$p, best_params$d, best_params$q, best_params$P, best_params$D, best_params$Q)
-  df_excess[i, ] = c(state_name, sum(excess), sum(lower95), sum(upper95), sum(excess2), sum(lower952), sum(upper952), cor(as.numeric(cases), as.numeric(excess)))
+  expected = paste0(round(sum(as.numeric(sum(f_fit[["mean"]])))), ' (',round(sum(as.numeric(f_fit[["lower"]]))), '-', round(sum(as.numeric(f_fit[["upper"]]))), ')')
+  ratioString = paste0 (ratio, ' (', ratioU, '-', ratioL, ')')
+  df_excess[i, ] = c(state_name, sum(as.numeric(t_State2)), expected, ratio, ratioString, sum(excess), sum(lower95), sum(upper95), sum(excess2), sum(lower952), sum(upper952), cor(as.numeric(cases), as.numeric(excess)))
   
 model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')(', best_params[4], best_params[5], best_params[6], ')[12]')
  # g = autoplot(t_State, series="Data") + 
@@ -252,7 +266,7 @@ model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')
  clrs = c("blueviolet", "chartreuse3", "chartreuse3", "blueviolet")
 g = autoplot(t_State, series="Data", size = 0.7) + 
   geom_vline(xintercept = 2020.12, linetype = "dashed", color = "black", size = 0.8)+
-   autolayer(fit$fitted, series= model_name, size = 0.5) +
+   autolayer(best_fit$fitted, series= model_name, size = 0.5) +
    autolayer(f_fit, series="Prediction") +
    autolayer(t_State2, series = "True Pandemic") + 
   xlab("Year") + ylab("Drug Overdose Deaths") + ggtitle(state_name) + theme_bw()+theme(legend.title = element_blank(),legend.position = "none") + scale_x_continuous(breaks=c(2015, 2016, 2017, 2018, 2019, 2020, 2021)) + 
@@ -279,6 +293,7 @@ df_excess = merge(df_excess, state_pop)
 df_excess = df_excess %>% mutate(Excess_pop = as.numeric(Excess)/(Population/100000), Lower95_pop =as.numeric(Lower95)/(Population/100000), Upper95_pop =as.numeric(Upper95)/(Population/100000), Excess_pop_2 = as.numeric(Excess_2)/(Population/100000), Lower95_pop_2 =as.numeric(Lower95_2)/(Population/100000), Upper95_pop_2 =as.numeric(Upper95_2)/(Population/100000))
 colnames(df_excess)[1] = 'state'
 ```
+
 
 ```{r}
 # Plot Map of US
@@ -319,7 +334,6 @@ theme(legend.position = "bottom")
 ggsave(paste('plots/',"US Map States"),
   device = "png")
 ```
-
 
 ```{r}
 # Plot Map of US first couple of months
@@ -630,8 +644,8 @@ for (i in county_codes){
 ```{r}
 # Actually looping through all parameters
 county_codes = unique(county$County.Code)
-df_excess_county <- data.frame(matrix(nrow = length(county_codes), ncol = 5))
-colnames(df_excess_county) <- c('County', 'Code', 'Excess', 'Lower95', 'Upper95')
+df_excess_county <- data.frame(matrix(nrow = length(county_codes), ncol = 8))
+colnames(df_excess_county) <- c('County', 'Code', 'Observed', 'Expected', 'Ratio', 'Excess', 'Lower95', 'Upper95')
 k = 1
 parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 2))
 for (i in county_codes){
@@ -692,7 +706,11 @@ for (i in county_codes){
   excess = as.numeric(true_2020) - as.numeric(f_fit[["mean"]])
   lower95 = as.numeric(true_2020) - as.numeric(f_fit[["lower"]])
   upper95 = as.numeric(true_2020) - as.numeric(f_fit[["upper"]])
-  df_excess_county[k, ] = c(as.character(unique(county_data$County)), i, excess, lower95, upper95)
+  ratio = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["mean"]])), 2)
+  
+  expected = paste0(round(sum(as.numeric(sum(f_fit[["mean"]])))), ' (',round(sum(as.numeric(f_fit[["lower"]]))), '-', round(sum(as.numeric(f_fit[["upper"]]))), ')')
+  ratioString = paste0 (ratio, ' (', ratioU, '-', ratioL, ')')
+  df_excess_county[k, ] = c(as.character(unique(county_data$County)), i, as.numeric(true_2020), expected, ratio, excess, lower95, upper95)
   k = k + 1
 }
 ```
@@ -1134,7 +1152,7 @@ upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) 
 ```{r}
 state <- read.delim("data/Synthetic Opioids/State_Year.txt")
 plots = list()
-df_excess_synth <- data.frame(matrix(nrow = 51, ncol = 4))
+df_excess_synth <- data.frame(matrix(nrow = 51, ncol = 8))
 k = 1
 for (i in seq(1, length(state_names))){
   state_name = state_names[i]
@@ -1194,13 +1212,18 @@ for (i in seq(1, length(state_names))){
   excess = as.numeric(true_2020) - as.numeric(f_fit[["mean"]])
   lower95 = as.numeric(true_2020) - as.numeric(f_fit[["lower"]])
   upper95 = as.numeric(true_2020) - as.numeric(f_fit[["upper"]])
-  df_excess_synth[k, ] = c(state_name, excess, lower95, upper95)
+  ratio = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["mean"]])), 2)
+  ratioL = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["lower"]])), 2)
+  ratioU = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["upper"]])), 2)
+  expected = paste0(round(sum(as.numeric(sum(f_fit[["mean"]])))), ' (',round(sum(as.numeric(f_fit[["lower"]]))), '-', round(sum(as.numeric(f_fit[["upper"]]))), ')')
+  ratioString = paste0 (ratio, ' (', ratioU, '-', ratioL, ')')
+  df_excess_synth[k, ] = c(state_name, round(sum(as.numeric(true_2020))), expected, ratio, ratioString, excess, lower95, upper95)
   k = k + 1
 }
 ```
 
 ```{r}
-colnames(df_excess_synth) <- c('State', 'Excess', 'Lower95', 'Upper95')
+colnames(df_excess_synth) <- c('State', 'Observed', 'Expected', 'Ratio', 'Ratio CI', 'Excess', 'Lower95', 'Upper95')
 df_excess_synth = merge(df_excess_synth, state_pop)
 df_excess_synth = df_excess_synth %>% mutate(Excess_pop = as.numeric(Excess)/(Population/100000), Lower95_pop =as.numeric(Lower95)/(Population/100000), Upper95_pop =as.numeric(Upper95)/(Population/100000))
 colnames(df_excess_synth)[1] = 'state'
@@ -1274,7 +1297,7 @@ country$Deaths = as.numeric(country$Deaths)
 
 t_Country = ts(country$Deaths[1:(length(country$Deaths) - 18)], start = decimal_date(as.Date("2015-01-01")), frequency = 12)
 
-parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 1),
+parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 2),
             P = seq(0, 1), D = seq(0, 1), Q = seq(0, 1))
 
 best_aic = 10000
@@ -1316,14 +1339,24 @@ f_fit<-forecast(best_fit, h = 18, robust = TRUE, level = 95)
 
 t_Country2 = ts(country$Deaths[(length(country$Deaths) - 17):length(country$Deaths)], start = decimal_date(as.Date("2020-03-01")), frequency = 12)
 
-model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')(', best_params[4], best_params[5], best_params[6], ')[12]')
+# model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')(', best_params[4], best_params[5], best_params[6], ')[12]')
+# autoplot(t_Country, series="Data", size = 0.7) + 
+#    autolayer(fit$fitted, series= model_name, size = 0.5) +
+#    autolayer(f_fit, series="Prediction") +
+#    autolayer(t_Country2, series = "True Post-Pandemic") +
+#   xlab("Year") + ylab("Synthetic Opioids Overdose Deaths") + ggtitle("United States") + theme_bw()+theme(legend.title = element_blank(),legend.position = "bottom")
+
+clrs = c("blueviolet", "chartreuse3", "chartreuse3", "blueviolet")
 autoplot(t_Country, series="Data", size = 0.7) + 
+  geom_vline(xintercept = 2020.12, linetype = "dashed", color = "black", size = 0.8)+
    autolayer(fit$fitted, series= model_name, size = 0.5) +
    autolayer(f_fit, series="Prediction") +
-   autolayer(t_Country2, series = "True Post-Pandemic") +
-  xlab("Year") + ylab("Synthetic Opioids Overdose Deaths") + ggtitle("United States") + theme_bw()+theme(legend.title = element_blank(),legend.position = "bottom")
+   autolayer(t_Country2, series = "True Pandemic") + 
+  xlab("Year") + ylab("Drug Overdose Deaths") + theme_bw()+ggtitle("Synthetic Opioids") +theme(legend.title = element_blank(),legend.position = "none") + scale_x_continuous(breaks=c(2015, 2016, 2017, 2018, 2019, 2020, 2021)) + 
+scale_color_manual(values=clrs)
+
 ggsave(paste('plots/',"US States Time Synthetic Opioids"),
-  device = "png")
+  device = "png", width = 7, height = 5)
 ```
 
 ```{r}
@@ -1332,16 +1365,16 @@ excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
 lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
 upper95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["upper"]])) / US_pop_norm
 
-excess2 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]) / US_pop_norm
-lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]) / US_pop_norm
-upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) / US_pop_norm
+excess2 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["mean"]])[1:3]) / US_pop_norm
+lower952 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["lower"]])[1:3]) / US_pop_norm
+upper952 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["upper"]])[1:3]) / US_pop_norm
 ```
 
 ## Cocaine
 ```{r}
 state <- read.delim("data/Cocaine/State_Year.txt")
 plots = list()
-df_excess_coc <- data.frame(matrix(nrow = 51, ncol = 4))
+df_excess_coc <- data.frame(matrix(nrow = 51, ncol = 8))
 k = 1
 for (i in seq(1, length(state_names))){
   state_name = state_names[i]
@@ -1404,13 +1437,18 @@ for (i in seq(1, length(state_names))){
   excess = as.numeric(true_2020) - as.numeric(f_fit[["mean"]])
   lower95 = as.numeric(true_2020) - as.numeric(f_fit[["lower"]])
   upper95 = as.numeric(true_2020) - as.numeric(f_fit[["upper"]])
-  df_excess_coc[k, ] = c(state_name, excess, lower95, upper95)
+  ratio = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["mean"]])), 2)
+  ratioL = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["lower"]])), 2)
+  ratioU = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["upper"]])), 2)
+  expected = paste0(round(sum(as.numeric(sum(f_fit[["mean"]])))), ' (',round(sum(as.numeric(f_fit[["lower"]]))), '-', round(sum(as.numeric(f_fit[["upper"]]))), ')')
+  ratioString = paste0 (ratio, ' (', ratioU, '-', ratioL, ')')
+  df_excess_coc[k, ] = c(state_name, round(sum(as.numeric(true_2020))), expected, ratio, ratioString, excess, lower95, upper95)
   k = k + 1
 }
 ```
 
 ```{r}
-colnames(df_excess_coc) <- c('State', 'Excess', 'Lower95', 'Upper95')
+colnames(df_excess_coc) <- c('State', 'Observed', 'Expected', 'Ratio', 'Ratio CI', 'Excess', 'Lower95', 'Upper95')
 df_excess_coc = merge(df_excess_coc, state_pop)
 df_excess_coc = df_excess_coc %>% mutate(Excess_pop = as.numeric(Excess)/(Population/100000), Lower95_pop =as.numeric(Lower95)/(Population/100000), Upper95_pop =as.numeric(Upper95)/(Population/100000))
 colnames(df_excess_coc)[1] = 'state'
@@ -1479,8 +1517,8 @@ ggsave(paste('plots/',"Vertical Plot Cocaine"),
 
 
 ```{r}
-country_1 <- read.delim("data/Cocaine/Country_Year.txt")
-country_2 <- read.delim("data/Cocaine/Country_Year_2.txt")
+country_1 <- read.delim("data/Cocaine/Country_Month.txt")
+country_2 <- read.delim("data/Cocaine/Country_Month_2.txt")
 country_1 = country_1[country_1$Notes == "", ]
 country_2 = country_2[country_2$Notes == "" & country_2$Month.Code %in% c('2021/01', '2021/02', '2021/03', '2021/04', '2021/05', '2021/06', '2021/07', '2021/08'), ]
 country = rbind(country_1, country_2)
@@ -1492,7 +1530,7 @@ country$Deaths = as.numeric(country$Deaths)
 
 t_Country = ts(country$Deaths[1:(length(country$Deaths) - 18)], start = decimal_date(as.Date("2015-01-01")), frequency = 12)
 
-parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 1),
+parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 2),
             P = seq(0, 1), D = seq(0, 1), Q = seq(0, 1))
 
 best_aic = 10000
@@ -1525,14 +1563,24 @@ f_fit<-forecast(best_fit, h = 18, robust = TRUE, level = 95)
 
 t_Country2 = ts(country$Deaths[(length(country$Deaths) - 17):length(country$Deaths)], start = decimal_date(as.Date("2020-03-01")), frequency = 12)
 
-model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')(', best_params[4], best_params[5], best_params[6], ')[12]')
+# model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')(', best_params[4], best_params[5], best_params[6], ')[12]')
+# autoplot(t_Country, series="Data", size = 0.7) + 
+#    autolayer(fit$fitted, series= model_name, size = 0.5) +
+#    autolayer(f_fit, series="Prediction") +
+#    autolayer(t_Country2, series = "True Post-Pandemic") +
+#   xlab("Year") + ylab("Cocaine Overdose Deaths") + ggtitle("United States") + theme_bw()+theme(legend.title = element_blank(),legend.position = "bottom")
+
+clrs = c("blueviolet", "chartreuse3", "chartreuse3", "blueviolet")
 autoplot(t_Country, series="Data", size = 0.7) + 
+  geom_vline(xintercept = 2020.12, linetype = "dashed", color = "black", size = 0.8)+
    autolayer(fit$fitted, series= model_name, size = 0.5) +
    autolayer(f_fit, series="Prediction") +
-   autolayer(t_Country2, series = "True Post-Pandemic") +
-  xlab("Year") + ylab("Cocaine Overdose Deaths") + ggtitle("United States") + theme_bw()+theme(legend.title = element_blank(),legend.position = "bottom")
+   autolayer(t_Country2, series = "True Pandemic") + 
+  xlab("Year") + ylab("Drug Overdose Deaths") + theme_bw()+ggtitle("Cocaine")+ theme(legend.title = element_blank(),legend.position = "none") + scale_x_continuous(breaks=c(2015, 2016, 2017, 2018, 2019, 2020, 2021)) + 
+scale_color_manual(values=clrs)
+
 ggsave(paste('plots/',"US States Time Cocaine"),
-  device = "png")
+  device = "png", width = 7, height = 5)
 ```
 
 ```{r}
@@ -1541,16 +1589,17 @@ excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
 lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
 upper95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["upper"]])) / US_pop_norm
 
-excess2 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]) / US_pop_norm
-lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]) / US_pop_norm
-upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) / US_pop_norm
+
+excess2 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["mean"]])[1:3]) / US_pop_norm
+lower952 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["lower"]])[1:3]) / US_pop_norm
+upper952 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["upper"]])[1:3]) / US_pop_norm
 ```
 
 
 ## Methamphetamines
 ```{r}
 state <- read.delim("data/Meth/State_Year.txt")
-df_excess_meth <- data.frame(matrix(nrow = 51, ncol = 4))
+df_excess_meth <- data.frame(matrix(nrow = 51, ncol = 8))
 k = 1
 for (i in seq(1, length(state_names))){
   state_name = state_names[i]
@@ -1613,13 +1662,18 @@ for (i in seq(1, length(state_names))){
   excess = as.numeric(true_2020) - as.numeric(f_fit[["mean"]])
   lower95 = as.numeric(true_2020) - as.numeric(f_fit[["lower"]])
   upper95 = as.numeric(true_2020) - as.numeric(f_fit[["upper"]])
-  df_excess_meth[k, ] = c(state_name, excess, lower95, upper95)
+  ratio = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["mean"]])), 2)
+  ratioL = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["lower"]])), 2)
+  ratioU = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["upper"]])), 2)
+  expected = paste0(round(sum(as.numeric(sum(f_fit[["mean"]])))), ' (',round(sum(as.numeric(f_fit[["lower"]]))), '-', round(sum(as.numeric(f_fit[["upper"]]))), ')')
+  ratioString = paste0 (ratio, ' (', ratioU, '-', ratioL, ')')
+  df_excess_meth[k, ] = c(state_name, round(sum(as.numeric(true_2020))), expected, ratio, ratioString, excess, lower95, upper95)
   k = k + 1
 }
 ```
 
 ```{r}
-colnames(df_excess_meth) <- c('State', 'Excess', 'Lower95', 'Upper95')
+colnames(df_excess_meth) <- c('State', 'Observed', 'Expected', 'Ratio', 'Ratio CI', 'Excess', 'Lower95', 'Upper95')
 df_excess_meth = merge(df_excess_meth, state_pop)
 df_excess_meth = df_excess_meth %>% mutate(Excess_pop = as.numeric(Excess)/(Population/100000), Lower95_pop =as.numeric(Lower95)/(Population/100000), Upper95_pop =as.numeric(Upper95)/(Population/100000))
 colnames(df_excess_meth)[1] = 'state'
@@ -1702,7 +1756,7 @@ country$Deaths = as.numeric(country$Deaths)
 
 t_Country = ts(country$Deaths[1:(length(country$Deaths) - 18)], start = decimal_date(as.Date("2015-01-01")), frequency = 12)
 
-parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 1),
+parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 2),
             P = seq(0, 1), D = seq(0, 1), Q = seq(0, 1))
 
 best_aic = 10000
@@ -1735,14 +1789,24 @@ f_fit<-forecast(best_fit, h = 18, robust = TRUE, level = 95)
 
 t_Country2 = ts(country$Deaths[(length(country$Deaths) - 17):length(country$Deaths)], start = decimal_date(as.Date("2020-03-01")), frequency = 12)
 
-model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')(', best_params[4], best_params[5], best_params[6], ')[12]')
+# model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')(', best_params[4], best_params[5], best_params[6], ')[12]')
+# autoplot(t_Country, series="Data", size = 0.7) + 
+#    autolayer(fit$fitted, series= model_name, size = 0.5) +
+#    autolayer(f_fit, series="Prediction") +
+#    autolayer(t_Country2, series = "True Post-Pandemic") +
+#   xlab("Year") + ylab("Methamphetamines Overdose Deaths") + ggtitle("United States") + theme_bw()+theme(legend.title = element_blank(),legend.position = "bottom")
+
+clrs = c("blueviolet", "chartreuse3", "chartreuse3", "blueviolet")
 autoplot(t_Country, series="Data", size = 0.7) + 
+  geom_vline(xintercept = 2020.12, linetype = "dashed", color = "black", size = 0.8)+
    autolayer(fit$fitted, series= model_name, size = 0.5) +
    autolayer(f_fit, series="Prediction") +
-   autolayer(t_Country2, series = "True Post-Pandemic") +
-  xlab("Year") + ylab("Methamphetamines Overdose Deaths") + ggtitle("United States") + theme_bw()+theme(legend.title = element_blank(),legend.position = "bottom")
+   autolayer(t_Country2, series = "True Pandemic") + 
+  xlab("Year") + ylab("Drug Overdose Deaths") + theme_bw()+ggtitle("Methamphetamines")+theme(legend.title = element_blank(),legend.position = "none") + scale_x_continuous(breaks=c(2015, 2016, 2017, 2018, 2019, 2020, 2021)) + 
+scale_color_manual(values=clrs)
+
 ggsave(paste('plots/',"US States Time Methamphetamines"),
-  device = "png")
+  device = "png", width = 7, height = 5)
 ```
 
 ```{r}
@@ -1751,16 +1815,16 @@ excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
 lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
 upper95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["upper"]])) / US_pop_norm
 
-excess2 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]) / US_pop_norm
-lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]) / US_pop_norm
-upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) / US_pop_norm
+excess2 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["mean"]])[1:3]) / US_pop_norm
+lower952 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["lower"]])[1:3]) / US_pop_norm
+upper952 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["upper"]])[1:3]) / US_pop_norm
 ```
 
 ## Benzadiapenes
 ```{r}
 state <- read.delim("data/Benz/State_Year.txt")
 plots = list()
-df_excess_benz <- data.frame(matrix(nrow = 51, ncol = 4))
+df_excess_benz <- data.frame(matrix(nrow = 51, ncol = 8))
 k = 1
 for (i in seq(1, length(state_names))){
   state_name = state_names[i]
@@ -1823,13 +1887,18 @@ for (i in seq(1, length(state_names))){
   excess = as.numeric(true_2020) - as.numeric(f_fit[["mean"]])
   lower95 = as.numeric(true_2020) - as.numeric(f_fit[["lower"]])
   upper95 = as.numeric(true_2020) - as.numeric(f_fit[["upper"]])
-  df_excess_benz[k, ] = c(state_name, excess, lower95, upper95)
+  ratio = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["mean"]])), 2)
+  ratioL = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["lower"]])), 2)
+  ratioU = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["upper"]])), 2)
+  expected = paste0(round(sum(as.numeric(sum(f_fit[["mean"]])))), ' (',round(sum(as.numeric(f_fit[["lower"]]))), '-', round(sum(as.numeric(f_fit[["upper"]]))), ')')
+  ratioString = paste0 (ratio, ' (', ratioU, '-', ratioL, ')')
+  df_excess_benz[k, ] = c(state_name, round(sum(as.numeric(true_2020))), expected, ratio, ratioString, excess, lower95, upper95)
   k = k + 1
 }
 ```
 
 ```{r}
-colnames(df_excess_benz) <- c('State', 'Excess', 'Lower95', 'Upper95')
+colnames(df_excess_benz) <- c('State', 'Observed', 'Expected', 'Ratio', 'Ratio CI', 'Excess', 'Lower95', 'Upper95')
 df_excess_benz = merge(df_excess_benz, state_pop)
 df_excess_benz= df_excess_benz %>% mutate(Excess_pop = as.numeric(Excess)/(Population/100000), Lower95_pop =as.numeric(Lower95)/(Population/100000), Upper95_pop =as.numeric(Upper95)/(Population/100000))
 colnames(df_excess_benz)[1] = 'state'
@@ -1893,7 +1962,6 @@ vert_plot <- ggplot(
     ggtitle("State Excess Deaths per 100,000 Persons")+
   xlab('Excess Deaths per 100,000 Persons')+
   theme_clean()
-vert_plot
 ggsave(paste('plots/',"Vertical Plot Benz"),
   device = "png", width = 7, height = 9)
 ```
@@ -1912,7 +1980,7 @@ country$Deaths = as.numeric(country$Deaths)
 
 t_Country = ts(country$Deaths[1:(length(country$Deaths) - 18)], start = decimal_date(as.Date("2015-01-01")), frequency = 12)
 
-parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 1),
+parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 2),
             P = seq(0, 1), D = seq(0, 1), Q = seq(0, 1))
 
 best_aic = 10000
@@ -1945,14 +2013,24 @@ f_fit<-forecast(best_fit, h = 18, robust = TRUE, level = 95)
 
 t_Country2 = ts(country$Deaths[(length(country$Deaths) - 17):length(country$Deaths)], start = decimal_date(as.Date("2020-03-01")), frequency = 12)
 
-model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')(', best_params[4], best_params[5], best_params[6], ')[12]')
+# model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')(', best_params[4], best_params[5], best_params[6], ')[12]')
+# autoplot(t_Country, series="Data", size = 0.7) + 
+#    autolayer(fit$fitted, series= model_name, size = 0.5) +
+#    autolayer(f_fit, series="Prediction") +
+#    autolayer(t_Country2, series = "True Post-Pandemic") +
+#   xlab("Year") + ylab("benzodiazepines Overdose Deaths") + ggtitle("United States") + theme_bw()+theme(legend.title = element_blank(),legend.position = "bottom")
+
+clrs = c("blueviolet", "chartreuse3", "chartreuse3", "blueviolet")
 autoplot(t_Country, series="Data", size = 0.7) + 
+  geom_vline(xintercept = 2020.12, linetype = "dashed", color = "black", size = 0.8)+
    autolayer(fit$fitted, series= model_name, size = 0.5) +
    autolayer(f_fit, series="Prediction") +
-   autolayer(t_Country2, series = "True Post-Pandemic") +
-  xlab("Year") + ylab("benzodiazepines Overdose Deaths") + ggtitle("United States") + theme_bw()+theme(legend.title = element_blank(),legend.position = "bottom")
+   autolayer(t_Country2, series = "True Pandemic") + 
+  xlab("Year") + ylab("Drug Overdose Deaths") + theme_bw()+ ggtitle ("Benzodiazepines") +theme(legend.title = element_blank(),legend.position = "none") + scale_x_continuous(breaks=c(2015, 2016, 2017, 2018, 2019, 2020, 2021)) + 
+scale_color_manual(values=clrs)
+
 ggsave(paste('plots/',"US States Time benzodiazepines"),
-  device = "png")
+  device = "png", width = 7, height = 5)
 ```
 
 ```{r}
@@ -1961,16 +2039,16 @@ excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
 lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
 upper95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["upper"]])) / US_pop_norm
 
-excess2 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]) / US_pop_norm
-lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]) / US_pop_norm
-upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) / US_pop_norm
+excess2 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["mean"]])[1:3]) / US_pop_norm
+lower952 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["lower"]])[1:3]) / US_pop_norm
+upper952 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["upper"]])[1:3]) / US_pop_norm
 ```
 
 ## Alcohol
 
 ```{r}
 state <- read.delim("data/Alcohol/State_Year.txt")
-df_excess_alc <- data.frame(matrix(nrow = 51, ncol = 4))
+df_excess_alc <- data.frame(matrix(nrow = 51, ncol = 8))
 k = 1
 for (i in seq(1, length(state_names))){
   state_name = state_names[i]
@@ -2033,13 +2111,18 @@ for (i in seq(1, length(state_names))){
   excess = as.numeric(true_2020) - as.numeric(f_fit[["mean"]])
   lower95 = as.numeric(true_2020) - as.numeric(f_fit[["lower"]])
   upper95 = as.numeric(true_2020) - as.numeric(f_fit[["upper"]])
-  df_excess_alc[k, ] = c(state_name, excess, lower95, upper95)
+  ratio = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["mean"]])), 2)
+  ratioL = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["lower"]])), 2)
+  ratioU = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["upper"]])), 2)
+  expected = paste0(round(sum(as.numeric(sum(f_fit[["mean"]])))), ' (',round(sum(as.numeric(f_fit[["lower"]]))), '-', round(sum(as.numeric(f_fit[["upper"]]))), ')')
+  ratioString = paste0 (ratio, ' (', ratioU, '-', ratioL, ')')
+  df_excess_alc[k, ] = c(state_name, round(sum(as.numeric(true_2020))), expected, ratio, ratioString, excess, lower95, upper95)
   k = k + 1
 }
 ```
 
 ```{r}
-colnames(df_excess_alc) <- c('State', 'Excess', 'Lower95', 'Upper95')
+colnames(df_excess_alc) <- c('State', 'Observed', 'Expected', 'Ratio', 'Ratio CI', 'Excess', 'Lower95', 'Upper95')
 df_excess_alc = merge(df_excess_alc, state_pop)
 df_excess_alc= df_excess_alc %>% mutate(Excess_pop = as.numeric(Excess)/(Population/100000), Lower95_pop =as.numeric(Lower95)/(Population/100000), Upper95_pop =as.numeric(Upper95)/(Population/100000))
 colnames(df_excess_alc)[1] = 'state'
@@ -2120,7 +2203,7 @@ country$Deaths = as.numeric(country$Deaths)
 
 t_Country = ts(country$Deaths[1:(length(country$Deaths) - 18)], start = decimal_date(as.Date("2015-01-01")), frequency = 12)
 
-parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 1),
+parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 2),
             P = seq(0, 1), D = seq(0, 1), Q = seq(0, 1))
 
 best_aic = 10000
@@ -2153,14 +2236,24 @@ f_fit<-forecast(best_fit, h = 18, robust = TRUE, level = 95)
 
 t_Country2 = ts(country$Deaths[(length(country$Deaths) - 17):length(country$Deaths)], start = decimal_date(as.Date("2020-03-01")), frequency = 12)
 
-model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')(', best_params[4], best_params[5], best_params[6], ')[12]')
+# model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')(', best_params[4], best_params[5], best_params[6], ')[12]')
+# autoplot(t_Country, series="Data", size = 0.7) + 
+#    autolayer(fit$fitted, series= model_name, size = 0.5) +
+#    autolayer(f_fit, series="Prediction") +
+#    autolayer(t_Country2, series = "True Post-Pandemic") +
+#   xlab("Year") + ylab("Alcohol Overdose Deaths") + ggtitle("United States") + theme_bw()+theme(legend.title = element_blank(),legend.position = "bottom")
+
+clrs = c("blueviolet", "chartreuse3", "chartreuse3", "blueviolet")
 autoplot(t_Country, series="Data", size = 0.7) + 
+  geom_vline(xintercept = 2020.12, linetype = "dashed", color = "black", size = 0.8)+
    autolayer(fit$fitted, series= model_name, size = 0.5) +
    autolayer(f_fit, series="Prediction") +
-   autolayer(t_Country2, series = "True Post-Pandemic") +
-  xlab("Year") + ylab("Alcohol Overdose Deaths") + ggtitle("United States") + theme_bw()+theme(legend.title = element_blank(),legend.position = "bottom")
+   autolayer(t_Country2, series = "True Pandemic") + 
+  xlab("Year") + ylab("Drug Overdose Deaths") + theme_bw()+ ggtitle ("Alcohol") +theme(legend.title = element_blank(),legend.position = "none") + scale_x_continuous(breaks=c(2015, 2016, 2017, 2018, 2019, 2020, 2021)) + 
+scale_color_manual(values=clrs)
+
 ggsave(paste('plots/',"US States Time Alcohol"),
-  device = "png")
+  device = "png", width = 7, height = 5)
 ```
 
 ```{r}
@@ -2169,9 +2262,9 @@ excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
 lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
 upper95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["upper"]])) / US_pop_norm
 
-excess2 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]) / US_pop_norm
-lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]) / US_pop_norm
-upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) / US_pop_norm
+excess2 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["mean"]])[1:3]) / US_pop_norm
+lower952 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["lower"]])[1:3]) / US_pop_norm
+upper952 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["upper"]])[1:3]) / US_pop_norm
 ```
 
 ## Heroin
@@ -2179,7 +2272,7 @@ upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) 
 ```{r}
 state <- read.delim("data/Heroin/State_Year.txt")
 plots = list()
-df_excess_her <- data.frame(matrix(nrow = 51, ncol = 4))
+df_excess_her <- data.frame(matrix(nrow = 51, ncol = 8))
 k = 1
 for (i in seq(1, length(state_names))){
   state_name = state_names[i]
@@ -2242,13 +2335,18 @@ for (i in seq(1, length(state_names))){
   excess = as.numeric(true_2020) - as.numeric(f_fit[["mean"]])
   lower95 = as.numeric(true_2020) - as.numeric(f_fit[["lower"]])
   upper95 = as.numeric(true_2020) - as.numeric(f_fit[["upper"]])
-  df_excess_her[k, ] = c(state_name, excess, lower95, upper95)
+  ratio = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["mean"]])), 2)
+  ratioL = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["lower"]])), 2)
+  ratioU = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["upper"]])), 2)
+  expected = paste0(round(sum(as.numeric(sum(f_fit[["mean"]])))), ' (',round(sum(as.numeric(f_fit[["lower"]]))), '-', round(sum(as.numeric(f_fit[["upper"]]))), ')')
+  ratioString = paste0 (ratio, ' (', ratioU, '-', ratioL, ')')
+  df_excess_her[k, ] = c(state_name, round(sum(as.numeric(true_2020))), expected, ratio, ratioString, excess, lower95, upper95)
   k = k + 1
 }
 ```
 
 ```{r}
-colnames(df_excess_her) <- c('State', 'Excess', 'Lower95', 'Upper95')
+colnames(df_excess_her) <- c('State', 'Observed', 'Expected', 'Ratio', 'Ratio CI', 'Excess', 'Lower95', 'Upper95')
 df_excess_her = merge(df_excess_her, state_pop)
 df_excess_her= df_excess_her %>% mutate(Excess_pop = as.numeric(Excess)/(Population/100000), Lower95_pop =as.numeric(Lower95)/(Population/100000), Upper95_pop =as.numeric(Upper95)/(Population/100000))
 colnames(df_excess_her)[1] = 'state'
@@ -2330,7 +2428,232 @@ country$Deaths = as.numeric(country$Deaths)
 
 t_Country = ts(country$Deaths[1:(length(country$Deaths) - 18)], start = decimal_date(as.Date("2015-01-01")), frequency = 12)
 
-parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 1),
+parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 2),
+            P = seq(0, 1), D = seq(0, 1), Q = seq(0, 1))
+
+best_aic = 10000
+for (i in seq(1, nrow(parameters))){
+  fit <- Arima(t_Country, order = c(parameters$p[i], parameters$d[i], parameters$q[i]),
+                    seasonal = c(parameters$P[i], parameters$D[i], parameters$Q[i]), method="ML")
+  aic = fit[["aicc"]]
+  if (aic<best_aic){
+    best_aic = aic
+    best_fit = fit
+    best_params = parameters[i, ]
+  }
+  
+}
+# fit <- Arima(t_Country, order = c(1, 1, 1),
+#                      seasonal = c(1, 0, 1), method="ML")
+f_fit<-forecast(best_fit, h = 18, robust = TRUE, level = 95)
+
+# Confidence Interval Calculation Attempt 1
+# sim <- matrix(NA, ncol=18,nrow=1000)
+# for(i in 1:1000)
+#   sim[i,] <- simulate(fit,18, future=TRUE)
+# se <- apply(sim,2,sd)/sqrt(1000)
+# f_fit$upper <- f_fit$mean + 1.96*se
+# f_fit$lower <- f_fit$mean - 1.96*se
+
+# Confidence Interval Attempt 2
+# f_fit$upper <- f_fit$mean + 1.96*sqrt(fit$sigma2)
+# f_fit$lower <- f_fit$mean - 1.96*sqrt(fit$sigma2)
+
+t_Country2 = ts(country$Deaths[(length(country$Deaths) - 17):length(country$Deaths)], start = decimal_date(as.Date("2020-03-01")), frequency = 12)
+
+# model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')(', best_params[4], best_params[5], best_params[6], ')[12]')
+# autoplot(t_Country, series="Data", size = 0.7) + 
+#    autolayer(fit$fitted, series= model_name, size = 0.5) +
+#    autolayer(f_fit, series="Prediction") +
+#    autolayer(t_Country2, series = "True Post-Pandemic") +
+#   xlab("Year") + ylab("Heroin Overdose Deaths") + ggtitle("United States") + theme_bw()+theme(legend.title = element_blank(),legend.position = "bottom")
+
+clrs = c("blueviolet", "chartreuse3", "chartreuse3", "blueviolet")
+autoplot(t_Country, series="Data", size = 0.7) + 
+  geom_vline(xintercept = 2020.12, linetype = "dashed", color = "black", size = 0.8)+
+   autolayer(fit$fitted, series= model_name, size = 0.5) +
+   autolayer(f_fit, series="Prediction") +
+   autolayer(t_Country2, series = "True Pandemic") + 
+  xlab("Year") + ylab("Drug Overdose Deaths") + theme_bw()+ ggtitle ("Heroin") + theme(legend.title = element_blank(),legend.position = "none") + scale_x_continuous(breaks=c(2015, 2016, 2017, 2018, 2019, 2020, 2021)) + 
+scale_color_manual(values=clrs)
+
+ggsave(paste('plots/',"US States Time Heroin"),
+  device = "png", width = 7, height = 5)
+```
+
+```{r}
+US_pop_norm = (state_pop$Population[state_pop$State == 'United States']/100000)
+excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
+lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
+upper95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["upper"]])) / US_pop_norm
+
+excess2 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["mean"]])[1:3]) / US_pop_norm
+lower952 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["lower"]])[1:3]) / US_pop_norm
+upper952 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["upper"]])[1:3]) / US_pop_norm
+```
+
+## Semi-Synthetic Opioids
+
+```{r}
+state <- read.delim("data/SemiSynthetic/State_Year.txt")
+plots = list()
+df_excess_semi <- data.frame(matrix(nrow = 51, ncol = 8))
+k = 1
+for (i in seq(1, length(state_names))){
+  state_name = state_names[i]
+  State_data = state %>% filter(State == state_name)
+  # State_data[State_data == 'Suppressed'] <- NA
+  # State_data$Deaths = as.numeric(levels(State_data$Deaths))[State_data$Deaths]
+  t_state = ts(State_data$Deaths[1:(length(State_data$Deaths) -1)], start = decimal_date(as.Date("2010-01-01")))
+  if (mean(is.na(as.numeric(t_state))) > 0.7){
+    next
+  }
+  best_aic = 10000
+  break_tag = FALSE
+  for (j in seq(1, nrow(parameters))){
+    paste(parameters$p[j], parameters$d[j], parameters$q[j])
+    fit <- tryCatch(
+    {
+        Arima(t_state, order = c(parameters$p[j], parameters$d[j], parameters$q[j]), method="ML")
+    },
+    error = function(e){
+      
+      tryCatch(
+      {
+        Arima(t_state, order = c(1, 1, 0),
+                      seasonal = c(1, 0, 1), method="ML")
+      },
+      error = function(e){
+        TRUE
+        break_tag <<- TRUE
+      }
+      )
+      
+    }
+    )
+    if (break_tag){
+      print("hi")
+      print(state_name)
+      next
+    }
+    
+    aic = fit[["aicc"]]
+    if (aic<best_aic){
+      best_aic = aic
+      best_fit = fit
+      best_params = parameters[j, ]
+    }
+  }
+  # if (break_tag){
+  #     next
+  #   }
+
+  f_fit<-forecast(best_fit, robust = TRUE, h = 1, level = 95)
+  true_2020 = State_data$Deaths[length(State_data$Deaths)]
+    g<-autoplot(t_state, series="Data") + 
+         autolayer(fit$fitted, series="SARIMA") +
+         autolayer(f_fit, series="Prediction") +
+        geom_point(aes(x=2020, y=true_2020), colour="blue") +
+         xlab("Year") + ylab("Drug Overdose Deaths") + ggtitle(state_name) + theme_bw()+theme(legend.title = element_blank(),legend.position = "bottom")
+  ggsave(paste0('plots/states_semi/',state_names[i]),
+  device = "png")
+  excess = as.numeric(true_2020) - as.numeric(f_fit[["mean"]])
+  lower95 = as.numeric(true_2020) - as.numeric(f_fit[["lower"]])
+  upper95 = as.numeric(true_2020) - as.numeric(f_fit[["upper"]])
+  ratio = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["mean"]])), 2)
+  ratioL = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["lower"]])), 2)
+  ratioU = round(sum(as.numeric(true_2020)) / sum(as.numeric(f_fit[["upper"]])), 2)
+  expected = paste0(round(sum(as.numeric(sum(f_fit[["mean"]])))), ' (',round(sum(as.numeric(f_fit[["lower"]]))), '-', round(sum(as.numeric(f_fit[["upper"]]))), ')')
+  ratioString = paste0 (ratio, ' (', ratioU, '-', ratioL, ')')
+  df_excess_semi[k, ] = c(state_name, round(sum(as.numeric(true_2020))), expected, ratio, ratioString, excess, lower95, upper95)
+  k = k + 1
+}
+```
+
+```{r}
+colnames(df_excess_semi) <- c('State', 'Observed', 'Expected', 'Ratio', 'Ratio CI', 'Excess', 'Lower95', 'Upper95')
+df_excess_semi = merge(df_excess_semi, state_pop)
+df_excess_semi= df_excess_semi %>% mutate(Excess_pop = as.numeric(Excess)/(Population/100000), Lower95_pop =as.numeric(Lower95)/(Population/100000), Upper95_pop =as.numeric(Upper95)/(Population/100000))
+colnames(df_excess_semi)[1] = 'state'
+```
+
+```{r}
+plot_usmap(data = df_excess_semi, values = "Excess_pop", color = "black") + 
+  scale_fill_viridis_c(option= "magma", name = "Excess Deaths Per 100,000 Persons", label = scales::comma) + 
+  labs(title = "US Excess Drug Overdose Deaths During the Pandemic- Semi") +
+  theme(legend.position = "right")
+ggsave(paste('plots/',"US Map States Semi"),
+  device = "png")
+```
+
+```{r}
+library(fiftystater)
+statesGraph <- fifty_states
+df_excess_graph = df_excess_semi %>% mutate(state = tolower(state))
+statesGraph = merge (statesGraph, df_excess_graph, by.x = 'id', by.y = 'state', all.x = TRUE)
+statesGraph = statesGraph[order(statesGraph$id, statesGraph$order), ]
+statesGraph = statesGraph %>% mutate(
+    outline = case_when(
+      Upper95_pop > 0 ~ "#ff5500",
+      TRUE ~ "black"),
+    size = ifelse(outline == "black", 0.25, 1)
+  )
+
+ggplot(statesGraph, aes(long, lat, group = group)) +
+ geom_polygon(aes(color = outline, size = size, fill = Excess_pop)) +
+ scale_fill_gradient2(
+    low = "purple2", 
+    mid = "white", 
+    high = "#ff7800", 
+    midpoint = 0, 
+    na.value = "grey80", name = "Excess Deaths per 100k"
+  ) +
+ scale_color_identity() +
+ scale_size_identity() +
+ theme_void() +
+theme(legend.position = "bottom")
+ggsave(paste('plots/',"US Map States Semi"),
+  device = "png")
+```
+
+```{r}
+df_excess_semi = df_excess_semi[order(df_excess_semi$Excess_pop, decreasing = T),]
+df_excess_semi$state = factor(df_excess_semi$state, levels=df_excess_semi[order(df_excess_semi$Excess_pop), "state"])
+df_excess_semi = df_excess_semi[complete.cases(df_excess_semi), ]
+vert_plot <- ggplot(
+    df_excess_semi,
+    aes(x = Excess_pop,xmin = Upper95_pop,xmax = Lower95_pop, y = state)) +
+    geom_errorbarh(height = .2, 
+                   position = position_dodge(width = .7),
+                   alpha = .9) +
+    geom_point(position = position_dodge(width = .7),
+               alpha = .9) +
+    geom_vline(xintercept = 0, 
+               color = "black",
+               alpha = .7) + 
+    ggtitle("State Excess Deaths per 100,000 Persons")+
+  xlab('Excess Deaths per 100,000 Persons')+
+  theme_clean()
+vert_plot
+ggsave(paste('plots/',"Vertical Plot Semi"),
+  device = "png", width = 7, height = 9)
+```
+
+```{r}
+country_1 <- read.delim("data/SemiSynthetic/Country_Month.txt")
+country_2 <- read.delim("data/SemiSynthetic/Country_Month_2.txt")
+country_1 = country_1[country_1$Notes == "", ]
+country_2 = country_2[country_2$Notes == "" & country_2$Month.Code %in% c('2021/01', '2021/02', '2021/03', '2021/04', '2021/05', '2021/06', '2021/07', '2021/08'), ]
+country = rbind(country_1, country_2)
+```
+
+```{r}
+country[country == 'Suppressed'] <- NA
+country$Deaths = as.numeric(country$Deaths)
+
+t_Country = ts(country$Deaths[1:(length(country$Deaths) - 18)], start = decimal_date(as.Date("2015-01-01")), frequency = 12)
+
+parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 2),
             P = seq(0, 1), D = seq(0, 1), Q = seq(0, 1))
 
 best_aic = 10000
@@ -2364,13 +2687,23 @@ f_fit<-forecast(best_fit, h = 18, robust = TRUE, level = 95)
 t_Country2 = ts(country$Deaths[(length(country$Deaths) - 17):length(country$Deaths)], start = decimal_date(as.Date("2020-03-01")), frequency = 12)
 
 model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')(', best_params[4], best_params[5], best_params[6], ')[12]')
+# autoplot(t_Country, series="Data", size = 0.7) + 
+#    autolayer(fit$fitted, series= model_name, size = 0.5) +
+#    autolayer(f_fit, series="Prediction") +
+#    autolayer(t_Country2, series = "True Post-Pandemic") +
+#   xlab("Year") + ylab("Natural and Semi-Synthetic Opioid Overdose Deaths") + ggtitle("United States") + theme_bw()+theme(legend.title = element_blank(),legend.position = "bottom")
+
+clrs = c("blueviolet", "chartreuse3", "chartreuse3", "blueviolet")
 autoplot(t_Country, series="Data", size = 0.7) + 
+  geom_vline(xintercept = 2020.12, linetype = "dashed", color = "black", size = 0.8)+
    autolayer(fit$fitted, series= model_name, size = 0.5) +
    autolayer(f_fit, series="Prediction") +
-   autolayer(t_Country2, series = "True Post-Pandemic") +
-  xlab("Year") + ylab("Heroin Overdose Deaths") + ggtitle("United States") + theme_bw()+theme(legend.title = element_blank(),legend.position = "bottom")
-ggsave(paste('plots/',"US States Time Alcohol"),
-  device = "png")
+   autolayer(t_Country2, series = "True Pandemic") + 
+  xlab("Year") + ylab("Drug Overdose Deaths") + ggtitle ("Natural and Semi-Synthetic Opioids") + theme_bw()+theme(legend.title = element_blank(),legend.position = "none") + scale_x_continuous(breaks=c(2015, 2016, 2017, 2018, 2019, 2020, 2021)) + 
+scale_color_manual(values=clrs)
+
+ggsave(paste('plots/',"US States Time Semi"),
+  device = "png", width = 7, height = 5)
 ```
 
 ```{r}
@@ -2379,9 +2712,9 @@ excess = sum(as.numeric(t_Country2) - as.numeric(f_fit[["mean"]])) / US_pop_norm
 lower95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["lower"]])) / US_pop_norm
 upper95 = sum(as.numeric(t_Country2) - as.numeric(f_fit[["upper"]])) / US_pop_norm
 
-excess2 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]) / US_pop_norm
-lower952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]) / US_pop_norm
-upper952 = sum(as.numeric(t_Country2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]) / US_pop_norm
+excess2 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["mean"]])[1:3]) / US_pop_norm
+lower952 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["lower"]])[1:3]) / US_pop_norm
+upper952 = sum(as.numeric(t_Country2)[1:3] - as.numeric(f_fit[["upper"]])[1:3]) / US_pop_norm
 ```
 
 # Create Tables
@@ -2395,6 +2728,7 @@ coc_small <- df_excess_coc %>% mutate (Excess_pop = paste(round(Excess_pop, 1), 
 her_small <- df_excess_her %>% mutate (Excess_pop = paste(round(Excess_pop, 1), "(", round(Upper95_pop, 1), "-", round(Lower95_pop, 1), ")")) %>% select(c(state, Excess_pop)) %>% rename(Heroin = Excess_pop)
 meth_small <- df_excess_meth %>% mutate (Excess_pop = paste(round(Excess_pop, 1), "(", round(Upper95_pop, 1), "-", round(Lower95_pop, 1), ")")) %>% select(c(state, Excess_pop)) %>% rename(Methamphetamine = Excess_pop)
 synth_small <- df_excess_synth %>% mutate (Excess_pop = paste(round(Excess_pop, 1), "(", round(Upper95_pop, 1), "-", round(Lower95_pop, 1), ")")) %>% select(c(state, Excess_pop)) %>% rename("Synthetic Opioids" = Excess_pop)
+semi_small <- df_excess_semi %>% mutate (Excess_pop = paste(round(Excess_pop, 1), "(", round(Upper95_pop, 1), "-", round(Lower95_pop, 1), ")")) %>% select(c(state, Excess_pop)) %>% rename("Semi" = Excess_pop)
 # We are using a left join to join them
 all_types<-Reduce(function(...) merge(..., all=TRUE, by = "state"), list(
   excess_small,
@@ -2402,6 +2736,7 @@ all_types<-Reduce(function(...) merge(..., all=TRUE, by = "state"), list(
   benz_small,
   coc_small,
   her_small,
+  semi_small,
   meth_small,
   synth_small
 ))
@@ -2436,9 +2771,22 @@ write.csv(all_types,"table_numbers.csv", row.names = FALSE)
 ```
 
 
+```{r}
+df_excess_list <- list(df_excess, df_excess_alc, df_excess_benz, df_excess_coc, df_excess_her, df_excess_semi, df_excess_meth, df_excess_synth)
+for (i in seq(1, length(df_excess_list))){
+  dfTemp <- df_excess_list[[i]]
+  dfNew = dfTemp
+  dfNew = dfNew %>% mutate (Excess = paste0(round(as.numeric(Excess)), " (", round(as.numeric(Upper95)), " - ", round(as.numeric(Lower95)), ")"), Excess_pop = paste0(round(Excess_pop, 1), " (", round(Upper95_pop, 1), " - ", round(Lower95_pop, 1), ")"))
+  dfNew = dfNew %>% select(c(state, Expected, Observed, Ratio, Excess, Excess_pop))
+  write.csv(dfNew,paste0('table_final_', i, '.csv'), row.names = FALSE)
+}
+```
+
+
+
 # County Table
 ```{r}
-table_county = df_excess_county %>% mutate (Excess_pop = paste(round(Excess_pop, 1), "(", round(Upper95_pop, 1), "-", round(Lower95_pop, 1), ")")) %>% select(c(County, Excess_pop)) %>% rename("Excess Mortality" = Excess_pop)
+table_county = df_excess_county %>% mutate (Excess_pop = paste0(round(Excess_pop, 1), " (", round(Upper95_pop, 1), " - ", round(Lower95_pop, 1), ")"), Excess = round(as.numeric(Excess)), Excess = paste0(round(as.numeric(Excess)), " (", round(as.numeric(Upper95)), " - ", round(as.numeric(Lower95)), ")")) %>% select(c(County, Observed, Expected, Ratio, Excess, Excess_pop)) %>% rename("Excess Mortality" = Excess_pop)
 write.csv(table_county,"table_county.csv", row.names = FALSE)
 ```
 
@@ -2564,3 +2912,395 @@ autoplot(ts(df_percent, start = decimal_date(as.Date("2015-01-01")), frequency =
 ggsave(paste('plots/',"Percent of Drugs"),
   device = "png", width = 7, height = 5, dpi = 600)
 ```
+
+## Monthly Excess Quantification
+```{r}
+month_names = c('March 2020', 'April 2020', 'May 2020', 'June 2020', 'July 2020', 'August 2020', 'September 2020', 'October 2020', 'November 2020', 'December 2020', 'January 2021', 'February 2021', 'March 2021', 'April 2021', 'May 2021', 'June 2021', 'July 2021', 'August 2021')
+state_names = as.character(unique(state$State))
+df_months <- data.frame(matrix(nrow = 51, ncol = 3))
+colnames(df_months) <- c('State', 'Number of Months', 'Month of Greatest Excess Mortality')
+for (i in seq(1, length(state_names))){
+  state_name = state_names[i]
+  cases = cases_state_month[cases_state_month$state == state_name, 2:ncol(cases_state_month)]
+  State_data = state %>% filter(State == state_name)
+  State_data[State_data == 'Suppressed'] <- NA
+  State_data$Deaths = as.numeric(levels(State_data$Deaths))[State_data$Deaths]
+  t_State = ts(State_data$Deaths[1:(length(State_data$Deaths) - 18)], start = decimal_date(as.Date("2015-01-01")), frequency = 12)
+  
+  parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 2),
+              P = seq(0, 1), D = seq(0, 1), Q = seq(0, 1))
+  
+  best_aic = 10000
+  for (j in seq(1, nrow(parameters))){
+    
+    fit <- tryCatch(
+    {
+        Arima(t_State, order = c(parameters$p[j], parameters$d[j], parameters$q[j]),
+                      seasonal = c(parameters$P[j], parameters$D[j], parameters$Q[j]), method="ML")
+    },
+    error = function(e){
+      
+      tryCatch(
+      {
+        Arima(t_State, order = c(1, 1, 0),
+                      seasonal = c(1, 0, 1), method="ML")
+      },
+      error = function(e){
+        Arima(t_State, order = c(1, 0, 0),
+                      seasonal = c(0, 0, 1), method="ML")
+        
+        })
+    })
+      
+    aic = fit[["aicc"]]
+    if (aic<best_aic){
+      best_aic = aic
+      best_fit = fit
+      best_params = parameters[j, ]
+    }
+  }
+
+  f_fit<-forecast(best_fit, robust = TRUE, h = 18, level = 95)
+  
+  t_State2 = ts(State_data$Deaths[(length(State_data$Deaths) - 17):length(State_data$Deaths)], start = decimal_date(as.Date("2020-03-01")), frequency = 12)
+  upper95 = as.numeric(t_State2) - as.numeric(f_fit[["upper"]])
+  center_diff = as.numeric(t_State2) - as.numeric(f_fit[["mean"]])
+  num_months = sum(upper95 > 0)
+  max_diff = which.max(center_diff)
+  df_months [i, ] = c(state_name, num_months, month_names [max_diff])
+}
+
+```
+
+
+# Scatter Plots
+
+```{r}
+state_names = as.character(unique(state$State))
+df_obs_exp <- data.frame(matrix(nrow = 51, ncol = 3))
+colnames(df_obs_exp) <- c('State', 'Expected', 'Observed')
+for (i in seq(1, length(state_names))){
+  state_name = state_names[i]
+  cases = cases_state_month[cases_state_month$state == state_name, 2:ncol(cases_state_month)]
+  State_data = state %>% filter(State == state_name)
+  State_data[State_data == 'Suppressed'] <- NA
+  State_data$Deaths = as.numeric(levels(State_data$Deaths))[State_data$Deaths]
+  t_State = ts(State_data$Deaths[1:(length(State_data$Deaths) - 18)], start = decimal_date(as.Date("2015-01-01")), frequency = 12)
+  
+  parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 2),
+              P = seq(0, 1), D = seq(0, 1), Q = seq(0, 1))
+  
+  best_aic = 10000
+  for (j in seq(1, nrow(parameters))){
+    
+    fit <- tryCatch(
+    {
+        Arima(t_State, order = c(parameters$p[j], parameters$d[j], parameters$q[j]),
+                      seasonal = c(parameters$P[j], parameters$D[j], parameters$Q[j]), method="ML")
+    },
+    error = function(e){
+      
+      tryCatch(
+      {
+        Arima(t_State, order = c(1, 1, 0),
+                      seasonal = c(1, 0, 1), method="ML")
+      },
+      error = function(e){
+        Arima(t_State, order = c(1, 0, 0),
+                      seasonal = c(0, 0, 1), method="ML")
+        
+        })
+    })
+      
+    aic = fit[["aicc"]]
+    if (aic<best_aic){
+      best_aic = aic
+      best_fit = fit
+      best_params = parameters[j, ]
+    }
+  }
+
+  f_fit<-forecast(best_fit, robust = TRUE, h = 18, level = 95)
+  
+  t_State2 = ts(State_data$Deaths[(length(State_data$Deaths) - 17):length(State_data$Deaths)], start = decimal_date(as.Date("2020-03-01")), frequency = 12)
+
+  df_obs_exp[i, ] = c(state_name, sum(as.numeric(f_fit[["mean"]])), sum(as.numeric(t_State2)))
+  
+model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')(', best_params[4], best_params[5], best_params[6], ')[12]')
+}
+
+```
+
+```{r}
+# Population Normalization
+df_obs_exp = merge(df_obs_exp, state_pop)
+df_obs_exp = df_obs_exp %>% mutate(Expected_pop = as.numeric(Expected)/(Population/100000), Observed_pop = as.numeric(Observed)/(Population/100000))
+colnames(df_excess)[1] = 'state'
+
+data(hhs_regions)
+hhs_regions =  hhs_regions %>% select(c(region_number, state_or_territory))
+df_obs_exp = merge(df_obs_exp, hhs_regions, by.x = 'State', by.y = 'state_or_territory')
+df_obs_exp$region_number = as.factor(df_obs_exp$region_number)
+```
+
+```{r}
+region_char = vector()
+for (row in 1:nrow(df_obs_exp)){
+  num_r =  sum(df_obs_exp$region_number == df_obs_exp[row, 'region_number'])
+  region_char = c(region_char, paste0(df_obs_exp[row, 'region_number'] , " (n = ", num_r, ")"))
+}
+```
+
+```{r}
+df_obs_exp$Region = region_char
+df_obs_exp$Region <- factor(df_obs_exp$Region, levels = c("1 (n = 6)", "2 (n = 2)", "3 (n = 6)", "4 (n = 8)", "5 (n = 6)", "6 (n = 5)", "7 (n = 4)", "8 (n = 6)", "9 (n = 4)", "10 (n = 4)"))
+ggplot(df_obs_exp, aes(x=Expected_pop, y=Observed_pop, color = Region)) + 
+  geom_point() +
+  geom_abline(slope=1, intercept=0, linetype="dotted") +
+  scale_x_continuous(breaks=seq(0, 130, 10), limits = c(0, 130)) + 
+  scale_y_continuous(breaks=seq(0, 130, 10), limits = c(0, 130)) +
+  xlab("Expected Drug Overdose Mortality Rate (per 100k)") + ylab("Actual Drug Overdose Mortality Rate (per 100k)") +
+  labs(colour = "HHS Region") +
+  theme_clean()
+```
+## County Version
+```{r}
+# Actually looping through all parameters
+county_codes = unique(county$County.Code)
+df_county_obs_ex <- data.frame(matrix(nrow = length(county_codes), ncol = 4))
+colnames(df_county_obs_ex) <- c('County', 'Code', 'Expected', 'Observed')
+k = 1
+parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 2))
+for (i in county_codes){
+  county_data = county %>% filter(County.Code == i)
+  t_county = ts(county_data$Deaths[1:(length(county_data$Deaths) -1)], start = decimal_date(as.Date("2010-01-01")))
+  
+  best_aic = 10000
+  break_tag = FALSE
+  for (j in seq(1, nrow(parameters))){
+    paste(parameters$p[j], parameters$d[j], parameters$q[j])
+    fit <- tryCatch(
+    {
+        Arima(t_county, order = c(parameters$p[j], parameters$d[j], parameters$q[j]), method="ML")
+    },
+    error = function(e){
+      
+      tryCatch(
+      {
+        Arima(t_county, order = c(1, 1, 0),
+                      seasonal = c(1, 0, 1), method="ML")
+      },
+      error = function(e){
+        TRUE
+        break_tag <<- TRUE
+      }
+      )
+      
+    }
+    )
+    if (break_tag){
+      print("hi")
+      print(unique(county_data$County))
+      next
+    }
+    
+    aic = fit[["aicc"]]
+    if (aic<best_aic){
+      best_aic = aic
+      best_fit = fit
+      best_params = parameters[j, ]
+    }
+  }
+  # if (break_tag){
+  #     next
+  #   }
+
+  f_fit<-forecast(best_fit, robust = TRUE, h = 1, level = 95)
+  
+  true_2020 = county_data$Deaths[length(county_data$Deaths)]
+  
+  df_county_obs_ex[k, ] = c(as.character(unique(county_data$County)), i, as.numeric(f_fit[["mean"]]), as.numeric(true_2020))
+  k = k + 1
+}
+```
+
+
+```{r}
+# Edit and Merge on FIPS
+for (row in 1:nrow(df_county_obs_ex)){
+  if (nchar(df_county_obs_ex[row, 'Code']) == 4){
+    newChar = paste0("0", df_county_obs_ex[row, 'Code'])
+    df_county_obs_ex[row, 'Code'] = newChar
+  }
+}
+df_county_obs_ex <- merge(df_county_obs_ex, county_pop, by.x = 'Code', by.y = 'fips')
+```
+
+```{r}
+# Pop Normalization
+df_county_obs_ex = df_county_obs_ex %>% mutate(Expected_pop = as.numeric(Expected)/(Pop/100000), Observed_pop = as.numeric(Observed)/(Pop/100000))
+colnames(df_county_obs_ex)[1] = 'fips'
+colnames(df_county_obs_ex)[2] = 'County'
+```
+
+```{r}
+df_county_obs_ex_test = df_county_obs_ex
+state_hhs = c()
+for (county in df_county_obs_ex_test$County.y){
+  state_hhs = c(state_hhs, strsplit(county, split = ', ')[[1]][2])
+}
+df_county_obs_ex$State = state_hhs
+
+data(hhs_regions)
+hhs_regions =  hhs_regions %>% select(c(region_number, state_or_territory))
+df_county_obs_ex = merge(df_county_obs_ex, hhs_regions, by.x = 'State', by.y = 'state_or_territory')
+df_county_obs_ex$region_number = as.factor(df_county_obs_ex$region_number)
+```
+
+```{r}
+region_char = vector()
+for (row in 1:nrow(df_county_obs_ex)){
+  num_r =  sum(df_county_obs_ex$region_number == df_county_obs_ex[row, 'region_number'])
+  region_char = c(region_char, paste0(df_county_obs_ex[row, 'region_number'] , " (n = ", num_r, ")"))
+}
+```
+
+
+```{r}
+df_county_obs_ex$Region = region_char
+df_county_obs_ex$Region <- factor(df_county_obs_ex$Region, levels = c("1 (n = 31)", "2 (n = 39)", "3 (n = 78)", "4 (n = 147)", "5 (n = 106)", "6 (n = 67)", "7 (n = 20)", "8 (n = 20)", "9 (n = 51)", "10 (n = 33)"))
+ggplot(df_county_obs_ex, aes(x=Expected_pop, y=Observed_pop, color = Region)) + 
+  geom_point(size = 0.7) +
+  geom_abline(slope=1, intercept=0, linetype="dotted") +
+  scale_x_continuous(breaks=seq(0, 160, 10), limits = c(0, 160)) + 
+  scale_y_continuous(breaks=seq(0, 160, 10), limits = c(0, 160)) +
+  xlab("Expected Drug Overdose Mortality Rate (per 100k)") + ylab("Actual Drug Overdose Mortality Rate (per 100k)") +
+  labs(colour = "HHS Region") +
+  theme_clean()
+```
+
+## Sensitivity Check to Model Fit Excess Mortality in 2019
+
+```{r}
+country_1 <- read.delim("data/Year.txt")
+country_2 <- read.delim("data/Year_2.txt")
+state_1 <- read.delim("data/State_Month.txt")
+state_2 <- read.delim("data/State_Month_2.txt")
+county_1 <- read.delim("data/County_Year.txt")
+county_2 <- read.delim("data/County_Year_2.txt")
+state_pop <- read.csv('data/State_Population.csv')
+colnames(state_pop) <- c('State', 'Population', 'Drop1', 'Drop2')
+state_pop = state_pop %>% select('State', 'Population')
+state_pop$Population = as.numeric(gsub(",","",state_pop$Population))
+cnames = c("County", "Pop", "Pop_2", "Pop_3")
+county_pop <- read_excel('data/County_Population.xlsx', col_names = cnames, skip = 3)
+county_pop = na.omit(county_pop)
+county_pop[ , 'fips'] <- rep("NA", nrow(county_pop))
+```
+
+```{r}
+state_1 = state_1[state_1$Notes == "", ]
+state_2 = state_2[state_2$Notes == "" & state_2$Month.Code %in% c('2021/01', '2021/02', '2021/03', '2021/04', '2021/05', '2021/06', '2021/07', '2021/08'), ]
+colnames(state_2)[2] <- 'State'
+colnames(state_2)[3] <- 'State.Code'
+state = rbind(state_1, state_2)
+```
+
+```{r}
+plots_2019 = list()
+state_names = as.character(unique(state$State))
+df_params_2019 <- data.frame(matrix(nrow = 51, ncol = 7))
+colnames(df_params_2019) <- c('State', 'p', 'd', 'q', 'P', 'D', 'Q')
+df_excess_2019 <- data.frame(matrix(nrow = 51, ncol = 7))
+colnames(df_excess_2019) <- c('State', 'Excess', 'Lower95', 'Upper95', 'Excess_2', 'Lower95_2', 'Upper95_2')
+for (i in seq(1, length(state_names))){
+  state_name = state_names[i]
+  cases = cases_state_month[cases_state_month$state == state_name, 2:ncol(cases_state_month)]
+  State_data = state %>% filter(State == state_name)
+  State_data[State_data == 'Suppressed'] <- NA
+  State_data$Deaths = as.numeric(levels(State_data$Deaths))[State_data$Deaths]
+  t_State = ts(State_data$Deaths[1:(length(State_data$Deaths) - 30)], start = decimal_date(as.Date("2015-01-01")), frequency = 12)
+  if (mean(is.na(as.numeric(State_data$Deaths))) > 0.8){
+    next
+  }
+  parameters = expand.grid(p = seq(0, 2), d = seq(0, 2), q = seq(0, 2),
+              P = seq(0, 1), D = seq(0, 1), Q = seq(0, 1))
+  
+  best_aic = 10000
+  for (j in seq(1, nrow(parameters))){
+    
+    fit <- tryCatch(
+    {
+        Arima(t_State, order = c(parameters$p[j], parameters$d[j], parameters$q[j]),
+                      seasonal = c(parameters$P[j], parameters$D[j], parameters$Q[j]), method="ML")
+    },
+    error = function(e){
+      
+      tryCatch(
+      {
+        Arima(t_State, order = c(1, 1, 0),
+                      seasonal = c(1, 0, 1), method="ML")
+      },
+      error = function(e){
+        Arima(t_State, order = c(1, 0, 0),
+                      seasonal = c(0, 0, 1), method="ML")
+        
+        })
+    })
+      
+    aic = fit[["aicc"]]
+    if (aic<best_aic){
+      best_aic = aic
+      best_fit = fit
+      best_params = parameters[j, ]
+    }
+  }
+
+  f_fit<-forecast(best_fit, robust = TRUE, h = 12, level = 95)
+  
+  t_State2 = ts(State_data$Deaths[(length(State_data$Deaths) - 29):(length(State_data$Deaths) - 18)], start = decimal_date(as.Date("2019-03-01")), frequency = 12)
+  t_State = ts(State_data$Deaths[1:(length(State_data$Deaths) - 30)], start = decimal_date(as.Date("2015-01-01")), frequency = 12)
+  excess = as.numeric(t_State2) - as.numeric(f_fit[["mean"]])
+  lower95 = as.numeric(t_State2) - as.numeric(f_fit[["lower"]])
+  upper95 = as.numeric(t_State2) - as.numeric(f_fit[["upper"]])
+  
+  excess2 = as.numeric(t_State2)[1:4] - as.numeric(f_fit[["mean"]])[1:4]
+  lower952 = as.numeric(t_State2)[1:4] - as.numeric(f_fit[["lower"]])[1:4]
+  upper952 = as.numeric(t_State2)[1:4] - as.numeric(f_fit[["upper"]])[1:4]
+  
+  df_params_2019[i, ] = c(state_name, best_params$p, best_params$d, best_params$q, best_params$P, best_params$D, best_params$Q)
+  df_excess_2019[i, ] = c(state_name, sum(excess), sum(lower95), sum(upper95), sum(excess2), sum(lower952), sum(upper952))
+  
+model_name = paste('SARIMA(', best_params[1], best_params[2], best_params[3], ')(', best_params[4], best_params[5], best_params[6], ')[12]')
+ 
+ clrs = c("blueviolet", "chartreuse3", "chartreuse3", "blueviolet")
+g = autoplot(t_State, series="Data", size = 0.7) + 
+  geom_vline(xintercept = 2019.12, linetype = "dashed", color = "black", size = 0.8)+
+   autolayer(best_fit$fitted, series= model_name, size = 0.5) +
+   autolayer(f_fit, series="Prediction") +
+   autolayer(t_State2, series = "True Pandemic") + 
+  xlab("Year") + ylab("Drug Overdose Deaths") + ggtitle(state_name) + theme_bw()+theme(legend.title = element_blank(),legend.position = "none") + scale_x_continuous(breaks=c(2015, 2016, 2017, 2018, 2019, 2020)) + 
+scale_color_manual(values=clrs)
+
+
+ plots_2019[[i]] = g
+}
+
+```
+
+```{r}
+# Save Plots
+for (i in seq(1, length(plots))){
+  ggsave(paste('plots/states_2019/',state_names[i]),
+  plot = plots_2019[[i]],
+  device = "png", width = 6, height = 5, dpi = 600)
+}
+```
+
+```{r}
+# Population Normalization
+df_excess_2019 = merge(df_excess_2019, state_pop)
+df_excess_2019 = df_excess_2019 %>% mutate(Excess_pop = as.numeric(Excess)/(Population/100000), Lower95_pop =as.numeric(Lower95)/(Population/100000), Upper95_pop =as.numeric(Upper95)/(Population/100000), Excess_pop_2 = as.numeric(Excess_2)/(Population/100000), Lower95_pop_2 =as.numeric(Lower95_2)/(Population/100000), Upper95_pop_2 =as.numeric(Upper95_2)/(Population/100000))
+colnames(df_excess_2019)[1] = 'state'
+```
+

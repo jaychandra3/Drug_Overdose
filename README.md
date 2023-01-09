@@ -1,4 +1,4 @@
-# Spatial Variation in Drug-Related Excess Mortality During the COVID-19 Pandemic in the United States
+# Drug Overdose-Related Excess Mortality in the United States During the COVID-19 Pandemic (March 2020 - August 2021)
 
 ### Data holds all of the drug overdose data, demographic data, and population data
 
